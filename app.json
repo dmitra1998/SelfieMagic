@@ -21,10 +21,43 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
+      ],
+      "package": "com.dmitra2.SelfieMagic"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow this app to access your camera to record video.",
+          "microphonePermission": "Allow this app to access your microphone to record video audio."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow this app to access your gallery.",
+          "savePhotosPermission": "Allow this app to save recorded videos to your gallery.",
+          "isAudioEnabled": true 
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2cb550b1-cfd6-4a6b-965d-391371c19980"
+      }
     }
   }
 }
