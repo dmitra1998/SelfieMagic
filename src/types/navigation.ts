@@ -4,6 +4,8 @@ export type RootStackParamList = {
 
  Home: undefined;
 
- Camera: undefined;
+ Camera: {
+    maxDuration?: number;
+ };
 
 };
