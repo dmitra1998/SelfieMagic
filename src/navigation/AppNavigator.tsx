@@ -5,6 +5,7 @@ import { RootStackParamList } from "../types/navigation";
 
 import LoginScreen from "../screens/LoginScreen";
 import HomeScreen from "../screens/HomeScreen";
+import CameraScreen from "../screens/CameraScreen";
 
 import { isAuthenticated } from "../services/authService";
 
@@ -33,7 +34,7 @@ export default function AppNavigator() {
     >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Home" component={HomeScreen} />
-      
+      <Stack.Screen name="Camera" component={CameraScreen} />
     </Stack.Navigator>
   );
 }
