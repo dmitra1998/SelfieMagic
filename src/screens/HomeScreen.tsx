@@ -26,7 +26,7 @@ export default function HomeScreen({ navigation }: Props) {
           {/* Main action button */}
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => navigation.navigate("Camera")}
+            onPress={() => navigation.navigate("Camera", { maxDuration: 60 })}
           >
             <Text style={styles.primaryButtonText}>📸 Open Camera</Text>
           </TouchableOpacity>

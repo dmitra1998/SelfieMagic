@@ -1,119 +1,103 @@
-import React, {
- useState,
- useRef
-} from "react";
+import React from "react";
 
 
 import {
- View,
- Button,
- StyleSheet
+View
 } from "react-native";
 
 
+import CameraPreview from "../components/camera/CameraPreview";
+
+import CameraControls from "../components/camera/CameraControls";
+
+import TimerIndicator from "../components/camera/TimerIndicator";
+
+
 import {
- CameraView,
- useCameraPermissions
-} from "expo-camera";
+useCameraRecorder
+} from "../hooks/useCameraRecorder";
 
 
 
 export default function CameraScreen(){
 
 
-const [permission,requestPermission] =
-useCameraPermissions();
+const {
+
+cameraRef,
+
+cameraType,
+
+isRecording,
+
+elapsedTime,
+
+startRecording,
+
+stopRecording,
+
+toggleCamera
 
 
-const cameraRef = useRef<CameraView>(null);
-
-
-
-if(!permission){
-    return null;
 }
+=
+useCameraRecorder();
 
 
-if(!permission.granted){
+
 
 return (
 
-<View>
+<View
+style={{
+flex:1
+}}
+>
 
-<Button
 
-title="Allow Camera"
+<CameraPreview
 
-onPress={requestPermission}
+
+cameraRef={cameraRef}
+
+
+cameraType={cameraType}
+
 
 />
+
+
+<View
+style={{
+position:"absolute",
+bottom:50,
+width:"100%",
+alignItems:"center"
+}}
+>
+
+
+<TimerIndicator
+
+seconds={elapsedTime}
+
+/>
+
+
+<CameraControls
+
+recording={isRecording}
+
+onStart={startRecording}
+
+onStop={stopRecording}
+
+onSwitch={toggleCamera}
+
+/>
+
 
 </View>
-
-);
-
-}
-
-
-
-async function startRecording(){
-
-
-if(cameraRef.current){
-
- const video =
- await cameraRef.current.recordAsync();
-
-
- console.log(
-   "Video saved:",
-   video?.uri
- );
-
-}
-
-}
-
-
-
-function stopRecording(){
-
- cameraRef.current?.stopRecording();
-
-}
-
-
-
-return (
-
-<View style={styles.container}>
-
-
-<CameraView
-
-ref={cameraRef}
-
-style={styles.camera}
-
-/>
-
-
-<Button
-
-title="Start Recording"
-
-onPress={startRecording}
-
-/>
-
-
-<Button
-
-title="Stop Recording"
-
-onPress={stopRecording}
-
-/>
 
 
 </View>
@@ -121,17 +105,3 @@ onPress={stopRecording}
 );
 
 }
-
-
-const styles =
-StyleSheet.create({
-
-container:{
- flex:1
-},
-
-camera:{
- flex:1
-}
-
-});

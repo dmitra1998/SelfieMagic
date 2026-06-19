@@ -1,0 +1,7 @@
+export const CAMERA_CONFIG = {
+
+    MAX_DURATION: 60,
+
+    VIDEO_QUALITY: "1080p"
+
+};
