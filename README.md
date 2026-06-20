@@ -69,3 +69,4 @@ WHERE upload_state IN ('pending', 'failed');
 ```
 
 This partial index contains only videos that still need upload work. It stays smaller than an index over every video and helps the app quickly find pending or failed uploads in retry order. Already uploaded videos do not need to be scanned.
+
