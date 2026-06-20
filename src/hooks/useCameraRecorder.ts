@@ -4,10 +4,10 @@ import * as Battery from "expo-battery";
 import * as Crypto from "expo-crypto";
 import * as Device from "expo-device";
 import * as Location from "expo-location";
-import * as Network from "expo-network";
 import { CAMERA_CONFIG } from "../constants/camera";
 import { insertRecording } from "../db/videoRepository";
 import { getAuthenticatedWorkerId } from "../services/authService";
+import { requestUploadSync } from "../services/uploadSyncEngine";
 import { saveRecordedVideo } from "../services/videoService";
 import type {
   FpsTier,
@@ -16,7 +16,6 @@ import type {
   RecordingMetadata,
   RecordingMetadataJson,
   RecordingStatus,
-  UploadNetworkType,
 } from "../types/recording";
 
 type UseCameraRecorderOptions = {
@@ -54,24 +53,6 @@ export function formatBatteryPercentage(level: number | null): string {
   }
 
   return `${Math.round(level * 100)}%`;
-}
-
-export async function getNetworkTypeAtUpload(): Promise<UploadNetworkType> {
-  const network = await Network.getNetworkStateAsync();
-
-  if (!network.isConnected || network.type === Network.NetworkStateType.NONE) {
-    return "none";
-  }
-
-  if (network.type === Network.NetworkStateType.WIFI) {
-    return "wifi";
-  }
-
-  if (network.type === Network.NetworkStateType.CELLULAR) {
-    return "cellular";
-  }
-
-  return "unknown";
 }
 
 export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
@@ -354,6 +335,7 @@ export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
       };
 
       await insertRecording(metadata);
+      requestUploadSync();
       setLastRecordingMetadata(metadata);
       console.info("Recording metadata JSON:", JSON.stringify(metadataJson));
     } catch (error) {
