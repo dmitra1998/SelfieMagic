@@ -1,37 +1,28 @@
-// HomeScreen.tsx
-import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
-import { logout } from "../services/authService";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../types/navigation";
-
-// Import your newly created external styles
+import { Text, TouchableOpacity, View } from "react-native";
+import { logout } from "../services/authService";
 import { styles } from "../Styles/HomeScreen";
+import { RootStackParamList } from "../types/navigation";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
 export default function HomeScreen({ navigation }: Props) {
   async function handleLogout() {
     await logout();
-    navigation.navigate("Login");
+    navigation.replace("Login");
   }
 
   return (
     <View style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.title}>Welcome Home</Text>
-        <Text style={styles.subtitle}>Manage your tasks and tools below</Text>
+        <Text style={styles.subtitle}>Manage your recordings and tools below</Text>
 
         <View style={styles.buttonContainer}>
-          {/* Main action button */}
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate("Camera", { maxDuration: 60 })}
-          >
-            <Text style={styles.primaryButtonText}>📸 Open Camera</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate("Camera", { maxDuration: 60 })}>
+            <Text style={styles.primaryButtonText}>Open Camera</Text>
           </TouchableOpacity>
 
-          {/* Logout action button */}
           <TouchableOpacity style={styles.secondaryButton} onPress={handleLogout}>
             <Text style={styles.secondaryButtonText}>Sign Out</Text>
           </TouchableOpacity>

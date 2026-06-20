@@ -1,13 +1,11 @@
-import React, { useEffect, useState } from "react";
-
+import { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../types/navigation";
-
-import LoginScreen from "../screens/LoginScreen";
 import HomeScreen from "../screens/HomeScreen";
+import LoginScreen from "../screens/LoginScreen";
 import CameraScreen from "../screens/CameraScreen";
-
 import { isAuthenticated } from "../services/authService";
+import { RootStackParamList } from "../types/navigation";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -16,25 +14,46 @@ export default function AppNavigator() {
   const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+
+    async function checkAuth() {
+      const result = await isAuthenticated();
+
+      if (mounted) {
+        setLoggedIn(result);
+        setLoading(false);
+      }
+    }
+
     checkAuth();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  async function checkAuth() {
-    const result = await isAuthenticated();
-    setLoggedIn(result);
-    setLoading(false);
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color="#111827" size="large" />
+      </View>
+    );
   }
 
-  if (loading) return null;
-
   return (
-    <Stack.Navigator
-      screenOptions={{ headerShown: false }}
-      initialRouteName={loggedIn ? "Home" : "Login"}
-    >
+    <Stack.Navigator initialRouteName={loggedIn ? "Home" : "Login"} screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Camera" component={CameraScreen} />
     </Stack.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    alignItems: "center",
+    backgroundColor: "#f9fafb",
+    flex: 1,
+    justifyContent: "center",
+  },
+});

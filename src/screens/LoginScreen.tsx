@@ -1,19 +1,9 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from "react-native";
-import { login } from "../services/authService";
+import { useState } from "react";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { login } from "../services/authService";
+import { styles } from "../Styles/LoginScreen";
 import { RootStackParamList } from "../types/navigation";
-
-// 1. Import your newly created external styles
-import { styles } from "../Styles/LoginScreen"; 
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
@@ -25,18 +15,16 @@ export default function LoginScreen({ navigation }: Props) {
     const result = await login(email, password);
 
     if (result.success) {
-      navigation.navigate("Home");
-    } else {
-      alert("Invalid credentials");
+      navigation.replace("Home");
+      return;
     }
+
+    alert("Invalid credentials");
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContainer} bounces={false}>
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
+      <ScrollView bounces={false} contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <View style={styles.headerContainer}>
           <Text style={styles.title}>Welcome Back</Text>
           <Text style={styles.subtitle}>Sign in to continue</Text>
@@ -45,26 +33,26 @@ export default function LoginScreen({ navigation }: Props) {
         <View style={styles.formContainer}>
           <Text style={styles.label}>Email Address</Text>
           <TextInput
-            style={styles.input}
-            placeholder="Enter your email"
-            placeholderTextColor="#9ca3af"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            keyboardType="email-address"
+            onChangeText={setEmail}
+            placeholder="Enter your email"
+            placeholderTextColor="#9ca3af"
+            style={styles.input}
+            value={email}
           />
 
           <Text style={styles.label}>Password</Text>
           <TextInput
-            style={styles.input}
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={setPassword}
             placeholder="Enter your password"
             placeholderTextColor="#9ca3af"
             secureTextEntry
+            style={styles.input}
             value={password}
-            onChangeText={setPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
           />
 
           <TouchableOpacity style={styles.button} onPress={handleLogin}>

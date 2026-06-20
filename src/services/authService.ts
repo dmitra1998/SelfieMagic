@@ -1,67 +1,39 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-
-const MOCK_USER = {
+const AUTH_TOKEN_STORAGE_KEY = "authToken";
+const DEVELOPMENT_USER = {
   email: "test@gmail.com",
-  password: "123456"
+  password: "123456",
 };
 
-
-export async function login(
-  email:string,
-  password:string
-){
-
-  if(
-    email === MOCK_USER.email &&
-    password === MOCK_USER.password
-  ){
-
-    // fake token
-    const token = "mock-jwt-token-12345";
-
-
-    await AsyncStorage.setItem(
-      "authToken",
-      token
-    );
-
-
-    return {
-      success:true,
-      token
+type LoginResult =
+  | {
+      success: true;
+      token: string;
+    }
+  | {
+      success: false;
+      token: null;
     };
 
+export async function login(email: string, password: string): Promise<LoginResult> {
+  const validCredentials = email.trim().toLowerCase() === DEVELOPMENT_USER.email && password === DEVELOPMENT_USER.password;
+
+  if (!validCredentials) {
+    return { success: false, token: null };
   }
 
+  const token = `development-token-${Date.now()}`;
+  await AsyncStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
 
-  return {
-    success:false,
-    token:null
-  };
-
+  return { success: true, token };
 }
 
-
-
-export async function logout(){
-
-  await AsyncStorage.removeItem(
-    "authToken"
-  );
-
+export async function logout(): Promise<void> {
+  await AsyncStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
 }
 
-
-
-export async function isAuthenticated(){
-
- const token =
-   await AsyncStorage.getItem(
-     "authToken"
-   );
-
-
- return token !== null;
-
+export async function isAuthenticated(): Promise<boolean> {
+  const token = await AsyncStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+  return token !== null;
 }

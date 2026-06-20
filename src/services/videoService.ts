@@ -1,33 +1,48 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as MediaLibrary from "expo-media-library";
+import type { RecordingMetadata } from "../types/recording";
 
+const RECORDED_VIDEOS_STORAGE_KEY = "recordedVideos";
 
-export async function saveVideo(uri:string){
+export type SavedVideoRecord = RecordingMetadata & {
+  id: string;
+};
 
+export async function saveRecordedVideo(uri: string): Promise<string> {
+  const permission = await MediaLibrary.requestPermissionsAsync(true, ["video"]);
 
-const permission =
-await MediaLibrary.requestPermissionsAsync();
+  if (!permission.granted) {
+    throw new Error("Media library permission is required to save recorded videos.");
+  }
 
-
-if(!permission.granted){
-
-throw new Error(
-"Media permission denied"
-);
-
+  const asset = await MediaLibrary.createAssetAsync(uri);
+  return asset.uri;
 }
 
+export async function saveRecordingMetadata(metadata: RecordingMetadata): Promise<SavedVideoRecord> {
+  const record: SavedVideoRecord = {
+    ...metadata,
+    id: `${metadata.recordedAt}-${metadata.savedUri}`,
+  };
 
-const asset =
-await MediaLibrary.createAssetAsync(uri);
+  const existingRecords = await getSavedVideoRecords();
+  const nextRecords = [record, ...existingRecords];
+  await AsyncStorage.setItem(RECORDED_VIDEOS_STORAGE_KEY, JSON.stringify(nextRecords));
 
+  return record;
+}
 
+export async function getSavedVideoRecords(): Promise<SavedVideoRecord[]> {
+  const rawRecords = await AsyncStorage.getItem(RECORDED_VIDEOS_STORAGE_KEY);
 
-console.log(
-"Saved to gallery:",
-asset.uri
-);
+  if (!rawRecords) {
+    return [];
+  }
 
-
-return asset.uri;
-
+  try {
+    const records = JSON.parse(rawRecords);
+    return Array.isArray(records) ? records : [];
+  } catch {
+    return [];
+  }
 }

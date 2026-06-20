@@ -1,37 +1,39 @@
-import React from "react";
+import { RefObject } from "react";
+import { StyleSheet } from "react-native";
+import { CameraType, CameraView } from "expo-camera";
+import { CAMERA_CONFIG } from "../../constants/camera";
 
-
-import {
-CameraView
-} from "expo-camera";
-
+type CameraPreviewProps = {
+  active: boolean;
+  cameraRef: RefObject<CameraView | null>;
+  cameraType: CameraType;
+  onCameraReady: () => void;
+  onMountError: (event: { message: string }) => void;
+};
 
 export default function CameraPreview({
-
-cameraRef,
-
-cameraType
-
-}:any){
-
-
-return (
-
-<CameraView
-
-ref={cameraRef}
-
-facing={cameraType}
-
-mode="video"
-
-style={{
-flex:1
-}}
-
-/>
-
-);
-
-
+  active,
+  cameraRef,
+  cameraType,
+  onCameraReady,
+  onMountError,
+}: CameraPreviewProps) {
+  return (
+    <CameraView
+      active={active}
+      facing={cameraType}
+      mode="video"
+      onCameraReady={onCameraReady}
+      onMountError={onMountError}
+      ref={cameraRef}
+      style={styles.preview}
+      videoQuality={CAMERA_CONFIG.VIDEO_QUALITY}
+    />
+  );
 }
+
+const styles = StyleSheet.create({
+  preview: {
+    flex: 1,
+  },
+});
