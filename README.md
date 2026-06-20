@@ -1,134 +1,181 @@
-## Database Migration Strategy
+# SelfieMagic
 
-Each phone has its own SQLite database. The backend handles data shared between users. The app uses `PRAGMA user_version` to track the database version. When the schema changes, the app runs migrations in order during startup. Each schema migration runs inside a transaction. If it fails, SQLite rolls back the whole change and keeps the old database working.
+SelfieMagic is an Android app for recording and uploading worker videos. It is built with Expo SDK 54 and TypeScript.
 
-For example, this is how we would add `gps_accuracy` to a database with 50,000 video rows:
+The app also works without an internet connection. It saves each video and its details on the phone first. When the phone is online, it uploads waiting videos to a private Amazon S3 bucket.
 
-1. We will add a nullable column without a default value:
+## What you need
 
-   ```sql
-   ALTER TABLE videos ADD COLUMN gps_accuracy REAL;
-   ```
+- Node.js 20.6 or newer
+- npm
+- Android Studio and the Android SDK
+- An Android 10 or newer phone or emulator for testing
+- An AWS account and access to an S3 bucket
+- An Expo account and EAS CLI to build the APK
 
-2. Existing rows will contain `NULL`. This means GPS accuracy was not recorded or has not been copied yet. Adding the column this way avoids rewriting all 50,000 rows during startup.
+The project uses Expo SDK 54, React Native 0.81, and TypeScript 5.9. Expo SDK 54 supports Android API 24 and newer. We test this project against API 29 and newer.
 
-3. We can update the recording code so every new video saves `gps_accuracy`.
+## Folder layout
 
-4. We will copy old GPS accuracy values from `metadata_json` in batches of 500:
-
-   ```sql
-   UPDATE videos
-   SET gps_accuracy = json_extract(metadata_json, '$.gps_at_start.accuracy')
-   WHERE video_id IN (
-      SELECT video_id
-      FROM videos
-      WHERE gps_accuracy IS NULL
-      LIMIT 500
-   );
-   ```
-
-5. We can run each batch in a short transaction. Pause between batches so recording and uploading stay responsive. Save the progress in a migration-state table so the work can continue after the app or phone restarts.
-
-6. We will add an index only if the app searches or sorts by `gps_accuracy`. Otherwise, the index would use storage and make writes slower without helping any query.
-
-We will test every migration with a new database and copies of databases from older app versions. One test database will contain 50,000 video rows.
-
-The tests will check the schema version, row count, saved metadata, restart recovery, and rollback behavior.
-
-For a destructive change, we will first add the new table or column. We will copy the data in small batches, update the app to use the new structure, and remove the old structure in a later release.
-
-## Query Optimization
-
-The video list uses keyset pagination instead of `OFFSET`. After loading the first page, the app uses the last video's `started_at` and `video_id` values to load the next page:
-
-```sql
-SELECT video_id, worker_id, started_at, duration_ms, file_size_bytes,
-       fps, fps_tier, upload_state
-FROM videos
-WHERE worker_id = ?
-  AND (started_at < ? OR (started_at = ? AND video_id < ?))
-ORDER BY started_at DESC, video_id DESC
-LIMIT ?;
+```text
+src/
+  components/       Camera buttons and other shared UI
+  db/               SQLite schema, migrations, and queries
+  hooks/            Camera recording logic
+  navigation/       App navigation
+  screens/          App screens
+  services/         Login, network, upload, and sync logic
+  storage/          Local key-value storage
+  types/             Shared TypeScript types
+backend/
+  src/               TypeScript upload API
+infra/terraform/     S3 and IAM setup
+docs/                Design notes and Android test results
 ```
 
-This query is supported by the following index:
+## Environment variables
+
+The root [`.env.example`](.env.example) lists all environment variables used by the project.
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
+```
+
+When using a real phone, set `EXPO_PUBLIC_UPLOAD_API_URL` to your computer's local network address. For example:
+
+```text
+http://192.168.0.156:3001
+```
+
+Do not use `localhost` on a phone. On the phone, `localhost` means the phone itself.
+
+`ALLOW_CLEARTEXT_TRAFFIC=true` allows local HTTP traffic in development and preview builds. Production builds should use HTTPS and keep this setting false.
+
+Do not add AWS access keys to either `.env.example` file. The backend uses the normal AWS credential chain.
+
+## Run the app
+
+Install the packages and check the TypeScript code:
+
+```powershell
+npm install
+npm run typecheck
+```
+
+Start Expo:
+
+```powershell
+npx expo start
+```
+
+## Run the backend
+
+Fill in `backend/.env`, then run:
+
+```powershell
+Set-Location backend
+npm install
+npm run typecheck
+npm start
+```
+
+The backend has two routes:
+
+- `POST /uploads/presign` creates a short-lived S3 upload URL.
+- `POST /uploads/confirm` checks that the video reached S3.
+
+The sample backend accepts `workerId` from the app. A real production backend must read the worker ID from a verified login token instead.
+
+## Build the Android APK
+
+The `preview` EAS profile creates an installable APK.
+
+```powershell
+npm install --global eas-cli
+eas login
+eas build --platform android --profile preview
+```
+
+Install the downloaded APK and check the device API level:
+
+```powershell
+adb install -r path/to/selfiemagic.apk
+adb shell getprop ro.build.version.sdk
+```
+
+The latest build details and file hash are in [`docs/ANDROID_TESTING.md`](docs/ANDROID_TESTING.md). A local copy is stored at `artifacts/SelfieMagic-1.0.0-preview.apk`. The `artifacts` folder is ignored by Git because APK files are large. EAS Build is used to share the APK.
+
+## How it works
+
+```mermaid
+flowchart LR
+  Camera[Expo Camera] --> Files[Phone file storage]
+  Camera --> SQLite[(SQLite)]
+  SQLite --> Queue[Upload queue]
+  Queue --> API[TypeScript upload API]
+  API -->|Upload URL| Queue
+  Queue -->|Video file| S3[(Private S3 bucket)]
+  Queue -->|Confirm upload| API
+  API -->|Check object| S3
+  API -->|Confirmed| Queue
+  Queue -->|Mark uploaded| SQLite
+```
+
+SQLite keeps the local video list and upload state. This means a poor connection or app restart does not lose the upload queue.
+
+The backend does not receive the video file. It only creates an upload URL and checks the uploaded S3 object. The phone sends the video straight to S3. This keeps large video traffic away from the backend server.
+
+## Database choices
+
+The app has `workers` and `videos` tables. Database changes use `PRAGMA user_version` and run inside transactions. WAL mode helps the app read the video list while another part of the app writes upload updates.
+
+The video list index is:
 
 ```sql
 CREATE INDEX idx_videos_worker_started
 ON videos(worker_id, started_at DESC, video_id DESC);
 ```
 
-This index first finds videos for one worker and then reads them in the correct order. `video_id` gives a stable order when two videos have the same start time. With `OFFSET`, SQLite must read and skip all earlier rows before returning a later page. Keyset pagination starts from the last loaded video, so later pages stay fast as the table grows. It also reduces skipped or repeated results when a new video is added while the list is open.
+It lets the dashboard load videos for one worker in the right order. `video_id` keeps the order stable when two videos have the same timestamp.
 
-The upload worker uses a second partial index:
+The upload queue has a smaller partial index. It only contains pending and failed videos, because uploaded videos no longer need queue scans.
 
-```sql
-CREATE INDEX idx_videos_upload_queue
-ON videos(upload_state, last_attempted_at, started_at)
-WHERE upload_state IN ('pending', 'failed');
-```
+The full schema and index notes are in [`docs/TECHNICAL_DESIGN.md`](docs/TECHNICAL_DESIGN.md).
 
-This partial index contains only videos that still need upload work. It stays smaller than an index over every video and helps the app quickly find pending or failed uploads in retry order. Already uploaded videos do not need to be scanned.
+## AWS choices
 
-## Upload and Sync Engine
-
-The upload queue is stored in SQLite, so it is not lost when the app or phone restarts.
-
-### Upload Flow
-
-1. A completed recording is saved to the phone and inserted into SQLite with the `pending` state.
-2. The sync engine checks that the internet is available.
-3. It changes one row from `pending` to `uploading`. This update is conditional, so the same video cannot be claimed twice.
-4. The app sends `video_id`, `worker_id`, file size, and content type to `POST /uploads/presign`.
-5. The backend creates a 15-minute presigned S3 PUT URL for that video.
-6. The app uploads the local file directly to S3.
-7. The app calls `POST /uploads/confirm` with the object key, file size, and ETag.
-8. The backend checks the object with S3 `HeadObject`. Only then does the app change the row to `uploaded`.
-
-The network type used for each attempt is saved as `wifi`, `cellular`, `none`, or `unknown`.
-
-### Upload States
-
-- `pending`: The video is waiting for its first attempt or next retry.
-- `uploading`: The app has claimed the video and is uploading it.
-- `uploaded`: S3 has confirmed the object. Code only allows this state to be set from `uploading`, and it never moves back to `pending`.
-- `failed`: The video reached the maximum number of attempts. The user can retry it manually.
-
-### Retry and Restart Handling
-
-The app retries failed attempts after 2, 4, 8, 16, 32, and 64 seconds. After the seventh failed attempt, the row changes to `failed`. The attempt count, last error, and last attempt time are stored in SQLite, so the delay still works after an app restart.
-
-If the app closes during an upload, the next launch changes the unfinished `uploading` row back to `pending`. The next attempt uploads the file from the beginning, as required.
-
-### Idempotency
-
-`video_id` is a UUID created when recording starts. It is also used as the API idempotency key and as part of the S3 object key:
+Each environment gets one private S3 bucket. Videos use this key format:
 
 ```text
 workers/{hashed_worker_id}/videos/{video_id}.mp4
 ```
 
-This gives one stable S3 key for each video. Before issuing another URL, the backend checks whether that object already exists with the expected size. This handles the case where the PUT succeeded but the app closed before saving the `uploaded` state. The existing object is confirmed instead of uploading a duplicate.
+The worker ID is hashed so an email address or phone number does not appear in the S3 path. The video UUID stays the same during retries, so a retry uses the same object key.
 
-### Local Backend Setup
+The phone never gets AWS credentials. It gets a short-lived upload URL for one file. After the upload, the backend checks the key, file size, and ETag before the app marks the video as uploaded.
 
-The example backend is in `backend/`. It uses the AWS SDK to create scoped presigned URLs and confirm uploaded objects.
+Terraform sets up private access, encryption, versioning, HTTPS-only access, lifecycle rules, and a limited IAM role. See [`INFRA.md`](INFRA.md) for the full AWS notes.
 
-```sh
-cd backend
-npm install
-# macOS/Linux: cp .env.example .env
-# Windows: Copy-Item .env.example .env
-npm start
+## Retries and larger usage
+
+The app saves the attempt count, last error, and last attempt time in SQLite. It waits 2, 4, 8, 16, 32, and 64 seconds between retries. An interrupted upload goes back to `pending` the next time the app starts.
+
+At 10,000 workers, with 20 videos of 50 MB per worker each day, the system receives about 200,000 videos and 10 TB of data every day.
+
+The first problem for a worker is usually phone storage or upload speed. Across the whole system, S3 storage cost is the biggest early concern. The sample one-process backend would also need authentication, monitoring, rate limits, and horizontal scaling before production use.
+
+More detail is available in the technical design document.
+
+## Checks
+
+Run these before creating a build:
+
+```powershell
+npm run typecheck
+npm --prefix backend run typecheck
+npm --prefix backend run build
+npx expo config --type public
 ```
 
-Set valid AWS credentials in the shell or use an IAM role. Set `AWS_REGION` and `S3_BUCKET` in `backend/.env`.
-
-Copy the root `.env.example` to `.env` and set `EXPO_PUBLIC_UPLOAD_API_URL`. When testing on a physical phone, use the computer's LAN address, such as `http://192.168.1.10:3001`. The phone cannot reach the computer through `localhost`.
-
-The example backend accepts the mock `worker_id` from the request. A production backend must verify the login token and take `worker_id` from the verified server-side session, not trust a worker ID sent by the app.
-
-## AWS Infrastructure
-
-The S3 architecture, IAM policy, cost estimate, lifecycle strategy, upload confirmation design, and Terraform instructions are documented in [INFRA.md](INFRA.md). The Terraform stack is in [`infra/terraform/`](infra/terraform/).
-
+To check the Terraform files, run `terraform fmt -check` and `terraform validate` from `infra/terraform`.

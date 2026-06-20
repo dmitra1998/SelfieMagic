@@ -1,7 +1,17 @@
 import { createHash } from "node:crypto";
-import { createServer } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+type JsonObject = Record<string, unknown>;
+
+type PresignedUpload = {
+  uploadUrl: string | null;
+  objectKey: string;
+  alreadyUploaded: boolean;
+  etag: string | null;
+  headers?: Record<string, string>;
+};
 
 const region = process.env.AWS_REGION;
 const bucket = process.env.S3_BUCKET;
@@ -17,7 +27,7 @@ const s3 = new S3Client({
   forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
 });
 
-function sendJson(response, status, body) {
+function sendJson(response: ServerResponse, status: number, body: unknown): void {
   response.writeHead(status, {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
@@ -27,29 +37,34 @@ function sendJson(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-async function readJson(request) {
-  const chunks = [];
+async function readJson(request: IncomingMessage): Promise<JsonObject> {
+  const chunks: Buffer[] = [];
   let size = 0;
 
   for await (const chunk of request) {
-    size += chunk.length;
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += buffer.length;
     if (size > 64 * 1024) {
       throw new Error("Request body is too large.");
     }
-    chunks.push(chunk);
+    chunks.push(buffer);
   }
 
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Request body must be a JSON object.");
+  }
+  return parsed as JsonObject;
 }
 
-function requireString(value, field) {
+function requireString(value: unknown, field: string): string {
   if (typeof value !== "string" || value.length === 0) {
     throw new Error(`${field} is required.`);
   }
   return value;
 }
 
-function validateVideoId(value) {
+function validateVideoId(value: unknown): string {
   const videoId = requireString(value, "videoId");
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(videoId)) {
     throw new Error("videoId must be a UUID v4.");
@@ -57,30 +72,38 @@ function validateVideoId(value) {
   return videoId;
 }
 
-function workerNamespace(workerId) {
+function workerNamespace(workerId: string): string {
   return createHash("sha256").update(workerId).digest("hex").slice(0, 32);
 }
 
-function objectKey(workerId, videoId) {
+function objectKey(workerId: string, videoId: string): string {
   return `workers/${workerNamespace(workerId)}/videos/${videoId}.mp4`;
 }
 
-function normalizeEtag(value) {
+function normalizeEtag(value: unknown): string | null {
   return typeof value === "string" ? value.replaceAll('"', "") : null;
 }
 
-async function findExistingObject(key) {
+function isMissingS3Object(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  const candidate = error as { name?: string; $metadata?: { httpStatusCode?: number } };
+  return candidate.$metadata?.httpStatusCode === 404 || candidate.name === "NotFound" || candidate.name === "NoSuchKey";
+}
+
+async function findExistingObject(key: string) {
   try {
     return await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
   } catch (error) {
-    if (error?.$metadata?.httpStatusCode === 404 || error?.name === "NotFound" || error?.name === "NoSuchKey") {
+    if (isMissingS3Object(error)) {
       return null;
     }
     throw error;
   }
 }
 
-async function createPresignedUpload(body, idempotencyKey) {
+async function createPresignedUpload(body: JsonObject, idempotencyKey: string | undefined): Promise<PresignedUpload> {
   const videoId = validateVideoId(body.videoId);
   const workerId = requireString(body.workerId, "workerId");
   const fileSizeBytes = Number(body.fileSizeBytes);
@@ -88,19 +111,16 @@ async function createPresignedUpload(body, idempotencyKey) {
   if (idempotencyKey !== videoId) {
     throw new Error("Idempotency-Key must match videoId.");
   }
-
   if (!Number.isSafeInteger(fileSizeBytes) || fileSizeBytes <= 0) {
     throw new Error("fileSizeBytes must be a positive integer.");
   }
 
   const key = objectKey(workerId, videoId);
   const existingObject = await findExistingObject(key);
-
   if (existingObject) {
     if (existingObject.ContentLength !== fileSizeBytes) {
       throw new Error("An object already exists for this video_id with a different file size.");
     }
-
     return {
       uploadUrl: null,
       objectKey: key,
@@ -109,12 +129,7 @@ async function createPresignedUpload(body, idempotencyKey) {
     };
   }
 
-  const command = new PutObjectCommand({
-    Bucket: bucket,
-    Key: key,
-    ContentType: "video/mp4",
-  });
-
+  const command = new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: "video/mp4" });
   return {
     uploadUrl: await getSignedUrl(s3, command, { expiresIn: 15 * 60 }),
     objectKey: key,
@@ -124,7 +139,7 @@ async function createPresignedUpload(body, idempotencyKey) {
   };
 }
 
-async function confirmUploadedObject(body, idempotencyKey) {
+async function confirmUploadedObject(body: JsonObject, idempotencyKey: string | undefined) {
   const videoId = validateVideoId(body.videoId);
   const workerId = requireString(body.workerId, "workerId");
   const expectedKey = objectKey(workerId, videoId);
@@ -132,6 +147,9 @@ async function confirmUploadedObject(body, idempotencyKey) {
 
   if (idempotencyKey !== videoId || body.objectKey !== expectedKey) {
     throw new Error("Upload identity does not match the scoped object key.");
+  }
+  if (!Number.isSafeInteger(fileSizeBytes) || fileSizeBytes <= 0) {
+    throw new Error("fileSizeBytes must be a positive integer.");
   }
 
   const object = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: expectedKey }));
@@ -144,7 +162,6 @@ async function confirmUploadedObject(body, idempotencyKey) {
   if (clientEtag && storedEtag && clientEtag !== storedEtag) {
     throw new Error("Uploaded object ETag does not match the PUT response.");
   }
-
   return { confirmed: true, videoId, objectKey: expectedKey, etag: storedEtag };
 }
 
@@ -161,18 +178,17 @@ const server = createServer(async (request, response) => {
     }
 
     const body = await readJson(request);
-    const idempotencyKey = request.headers["idempotency-key"];
+    const header = request.headers["idempotency-key"];
+    const idempotencyKey = Array.isArray(header) ? header[0] : header;
 
     if (request.url === "/uploads/presign") {
       sendJson(response, 200, await createPresignedUpload(body, idempotencyKey));
       return;
     }
-
     if (request.url === "/uploads/confirm") {
       sendJson(response, 200, await confirmUploadedObject(body, idempotencyKey));
       return;
     }
-
     sendJson(response, 404, { error: "Not found" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected server error";
