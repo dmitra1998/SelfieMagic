@@ -13,6 +13,8 @@ export default function CameraControls({
 
 recording,
 
+canRecord,
+
 onStart,
 
 onStop,
@@ -31,6 +33,8 @@ return (
 <RecordButton
 
 recording={recording}
+
+disabled={!recording && !canRecord}
 
 onPress={
 recording

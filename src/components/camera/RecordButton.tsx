@@ -7,7 +7,9 @@ export default function RecordButton({
 
 recording,
 
-onPress
+onPress,
+
+disabled
 
 }:any){
 
@@ -25,6 +27,8 @@ recording
 }
 
 onPress={onPress}
+
+disabled={disabled}
 
 />
 
