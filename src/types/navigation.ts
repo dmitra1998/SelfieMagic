@@ -1,11 +1,8 @@
 export type RootStackParamList = {
-
- Login: undefined;
-
- Home: undefined;
-
- Camera: {
+  Login: undefined;
+  Home: undefined;
+  Camera: {
     maxDuration?: number;
- };
-
+  };
+  Videos: undefined;
 };

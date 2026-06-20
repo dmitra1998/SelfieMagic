@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HomeScreen from "../screens/HomeScreen";
 import LoginScreen from "../screens/LoginScreen";
 import CameraScreen from "../screens/CameraScreen";
+import VideoDashboardScreen from "../screens/VideoDashboardScreen";
 import { isAuthenticated } from "../services/authService";
 import { RootStackParamList } from "../types/navigation";
 
@@ -45,6 +46,7 @@ export default function AppNavigator() {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Camera" component={CameraScreen} />
+      <Stack.Screen name="Videos" component={VideoDashboardScreen} />
     </Stack.Navigator>
   );
 }

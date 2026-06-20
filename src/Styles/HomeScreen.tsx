@@ -35,6 +35,18 @@ export const styles = StyleSheet.create({
     width: "100%",
     gap: 16, // Adds uniform space between buttons
   },
+  dashboardButton: {
+    alignItems: "center",
+    backgroundColor: "#e0f2f1",
+    borderRadius: 8,
+    justifyContent: "center",
+    paddingVertical: 16,
+  },
+  dashboardButtonText: {
+    color: "#0f766e",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   primaryButton: {
     backgroundColor: "#2563eb", // Vibrant main brand blue
     borderRadius: 12,
