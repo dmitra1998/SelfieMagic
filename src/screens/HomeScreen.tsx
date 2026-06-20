@@ -23,6 +23,10 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.primaryButtonText}>Open Camera</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.dashboardButton} onPress={() => navigation.navigate("Videos")}>
+            <Text style={styles.dashboardButtonText}>Recorded Videos</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.secondaryButton} onPress={handleLogout}>
             <Text style={styles.secondaryButtonText}>Sign Out</Text>
           </TouchableOpacity>
