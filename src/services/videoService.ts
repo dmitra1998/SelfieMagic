@@ -1,48 +1,35 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Directory, File, Paths } from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
-import type { RecordingMetadata } from "../types/recording";
 
-const RECORDED_VIDEOS_STORAGE_KEY = "recordedVideos";
-
-export type SavedVideoRecord = RecordingMetadata & {
-  id: string;
+export type PersistedVideo = {
+  localPath: string;
+  fileSizeBytes: number;
+  galleryUri: string | null;
 };
 
-export async function saveRecordedVideo(uri: string): Promise<string> {
-  const permission = await MediaLibrary.requestPermissionsAsync(true, ["video"]);
+export async function saveRecordedVideo(sourceUri: string, videoId: string): Promise<PersistedVideo> {
+  const recordingsDirectory = new Directory(Paths.document, "recordings");
+  recordingsDirectory.create({ idempotent: true, intermediates: true });
 
-  if (!permission.granted) {
-    throw new Error("Media library permission is required to save recorded videos.");
-  }
+  const sourceFile = new File(sourceUri);
+  const localFile = new File(recordingsDirectory, `${videoId}.mp4`);
+  sourceFile.copy(localFile);
 
-  const asset = await MediaLibrary.createAssetAsync(uri);
-  return asset.uri;
-}
-
-export async function saveRecordingMetadata(metadata: RecordingMetadata): Promise<SavedVideoRecord> {
-  const record: SavedVideoRecord = {
-    ...metadata,
-    id: `${metadata.recordedAt}-${metadata.savedUri}`,
-  };
-
-  const existingRecords = await getSavedVideoRecords();
-  const nextRecords = [record, ...existingRecords];
-  await AsyncStorage.setItem(RECORDED_VIDEOS_STORAGE_KEY, JSON.stringify(nextRecords));
-
-  return record;
-}
-
-export async function getSavedVideoRecords(): Promise<SavedVideoRecord[]> {
-  const rawRecords = await AsyncStorage.getItem(RECORDED_VIDEOS_STORAGE_KEY);
-
-  if (!rawRecords) {
-    return [];
-  }
+  let galleryUri: string | null = null;
 
   try {
-    const records = JSON.parse(rawRecords);
-    return Array.isArray(records) ? records : [];
-  } catch {
-    return [];
+    const permission = await MediaLibrary.requestPermissionsAsync(true, ["video"]);
+    if (permission.granted) {
+      const asset = await MediaLibrary.createAssetAsync(localFile.uri);
+      galleryUri = asset.uri;
+    }
+  } catch (error) {
+    console.warn("Video was stored locally but could not be copied to the gallery:", error);
   }
+
+  return {
+    localPath: localFile.uri,
+    fileSizeBytes: localFile.size,
+    galleryUri,
+  };
 }

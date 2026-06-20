@@ -1,11 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CameraType, CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import * as Battery from "expo-battery";
+import * as Crypto from "expo-crypto";
+import * as Device from "expo-device";
 import * as Location from "expo-location";
 import * as Network from "expo-network";
 import { CAMERA_CONFIG } from "../constants/camera";
-import { saveRecordedVideo, saveRecordingMetadata } from "../services/videoService";
-import type { GpsCoordinates, GpsStatus, RecordingMetadata, RecordingStatus, UploadNetworkType } from "../types/recording";
+import { insertRecording } from "../db/videoRepository";
+import { getAuthenticatedWorkerId } from "../services/authService";
+import { saveRecordedVideo } from "../services/videoService";
+import type {
+  FpsTier,
+  GpsCoordinates,
+  GpsStatus,
+  RecordingMetadata,
+  RecordingMetadataJson,
+  RecordingStatus,
+  UploadNetworkType,
+} from "../types/recording";
 
 type UseCameraRecorderOptions = {
   isActive: boolean;
@@ -18,6 +30,22 @@ function toGpsCoordinates(location: Location.LocationObject): GpsCoordinates {
     accuracy: location.coords.accuracy,
     capturedAt: new Date(location.timestamp).toISOString(),
   };
+}
+
+function getFpsTier(fps: number): FpsTier {
+  if (fps < 20) {
+    return "low";
+  }
+
+  if (fps <= 30) {
+    return "standard";
+  }
+
+  return "high";
+}
+
+function toBatteryPercentage(level: number): number | null {
+  return level < 0 ? null : Math.round(level * 100);
 }
 
 export function formatBatteryPercentage(level: number | null): string {
@@ -240,6 +268,11 @@ export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
       return;
     }
 
+    const videoId = Crypto.randomUUID();
+    const startedAtMilliseconds = Date.now();
+    const startedAt = new Date(startedAtMilliseconds).toISOString();
+    const cameraFacingAtStart = cameraType;
+
     setElapsedTime(0);
     setBatteryLevelAtEnd(null);
     setLastRecordingMetadata(null);
@@ -248,7 +281,7 @@ export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
     setErrorMessage(null);
 
     try {
-      const batteryStart = await Battery.getBatteryLevelAsync();
+      const [batteryStart, workerId] = await Promise.all([Battery.getBatteryLevelAsync(), getAuthenticatedWorkerId()]);
       setBatteryLevelAtStart(batteryStart);
       setRecordingStatus("recording");
 
@@ -256,6 +289,8 @@ export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
         maxDuration: CAMERA_CONFIG.MAX_DURATION,
       });
 
+      const endedAtMilliseconds = Date.now();
+      const endedAt = new Date(endedAtMilliseconds).toISOString();
       setRecordingStatus("saving");
 
       const batteryEnd = await Battery.getBatteryLevelAsync();
@@ -266,18 +301,61 @@ export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
         throw new Error("Camera did not return a video file.");
       }
 
-      const savedUri = await saveRecordedVideo(video.uri);
+      const persistedVideo = await saveRecordedVideo(video.uri, videoId);
+      const fps = CAMERA_CONFIG.FPS;
+      const fpsTier = getFpsTier(fps);
+      const deviceModel = [Device.manufacturer, Device.modelName].filter(Boolean).join(" ") || "Unknown device";
+      const osVersion = Device.osVersion ?? "Unknown Android version";
+      const durationMs = Math.max(0, endedAtMilliseconds - startedAtMilliseconds);
+      const metadataJson: RecordingMetadataJson = {
+        video_id: videoId,
+        worker_id: workerId,
+        started_at: startedAt,
+        ended_at: endedAt,
+        duration_ms: durationMs,
+        file_size_bytes: persistedVideo.fileSizeBytes,
+        fps,
+        fps_tier: fpsTier,
+        device_model: deviceModel,
+        os_version: osVersion,
+        resolution: CAMERA_CONFIG.RESOLUTION,
+        local_path: persistedVideo.localPath,
+        gps_at_start: {
+          lat: gpsAtStart.latitude,
+          lng: gpsAtStart.longitude,
+          accuracy: gpsAtStart.accuracy,
+          captured_at: gpsAtStart.capturedAt,
+        },
+        battery_level_at_start: toBatteryPercentage(batteryStart),
+        battery_level_at_end: toBatteryPercentage(batteryEnd),
+        network_type_at_upload: null,
+        camera_facing_at_start: cameraFacingAtStart,
+        fps_source: "configured",
+        gallery_uri: persistedVideo.galleryUri,
+      };
       const metadata: RecordingMetadata = {
-        gpsAtStart,
-        batteryLevelAtStart: batteryStart,
-        batteryLevelAtEnd: batteryEnd,
-        savedUri,
-        recordedAt: new Date().toISOString(),
+        videoId,
+        workerId,
+        startedAt,
+        endedAt,
+        durationMs,
+        fileSizeBytes: persistedVideo.fileSizeBytes,
+        fps,
+        fpsTier,
+        deviceModel,
+        osVersion,
+        resolution: CAMERA_CONFIG.RESOLUTION,
+        localPath: persistedVideo.localPath,
+        metadata: metadataJson,
+        uploadState: "pending",
+        attemptCount: 0,
+        lastError: null,
+        lastAttemptedAt: null,
       };
 
-      await saveRecordingMetadata(metadata);
+      await insertRecording(metadata);
       setLastRecordingMetadata(metadata);
-      console.info("Recording metadata:", metadata);
+      console.info("Recording metadata JSON:", JSON.stringify(metadataJson));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error while recording video.";
       console.error("Error while recording video:", error);
@@ -285,7 +363,7 @@ export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
     } finally {
       setRecordingStatus("idle");
     }
-  }, [canRecord]);
+  }, [cameraType, canRecord]);
 
   const stopRecording = useCallback(() => {
     if (cameraRef.current && recordingStatusRef.current === "recording") {
