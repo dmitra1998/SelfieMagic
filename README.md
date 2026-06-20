@@ -70,3 +70,61 @@ WHERE upload_state IN ('pending', 'failed');
 
 This partial index contains only videos that still need upload work. It stays smaller than an index over every video and helps the app quickly find pending or failed uploads in retry order. Already uploaded videos do not need to be scanned.
 
+## Upload and Sync Engine
+
+The upload queue is stored in SQLite, so it is not lost when the app or phone restarts.
+
+### Upload Flow
+
+1. A completed recording is saved to the phone and inserted into SQLite with the `pending` state.
+2. The sync engine checks that the internet is available.
+3. It changes one row from `pending` to `uploading`. This update is conditional, so the same video cannot be claimed twice.
+4. The app sends `video_id`, `worker_id`, file size, and content type to `POST /uploads/presign`.
+5. The backend creates a 15-minute presigned S3 PUT URL for that video.
+6. The app uploads the local file directly to S3.
+7. The app calls `POST /uploads/confirm` with the object key, file size, and ETag.
+8. The backend checks the object with S3 `HeadObject`. Only then does the app change the row to `uploaded`.
+
+The network type used for each attempt is saved as `wifi`, `cellular`, `none`, or `unknown`.
+
+### Upload States
+
+- `pending`: The video is waiting for its first attempt or next retry.
+- `uploading`: The app has claimed the video and is uploading it.
+- `uploaded`: S3 has confirmed the object. Code only allows this state to be set from `uploading`, and it never moves back to `pending`.
+- `failed`: The video reached the maximum number of attempts. The user can retry it manually.
+
+### Retry and Restart Handling
+
+The app retries failed attempts after 2, 4, 8, 16, 32, and 64 seconds. After the seventh failed attempt, the row changes to `failed`. The attempt count, last error, and last attempt time are stored in SQLite, so the delay still works after an app restart.
+
+If the app closes during an upload, the next launch changes the unfinished `uploading` row back to `pending`. The next attempt uploads the file from the beginning, as required.
+
+### Idempotency
+
+`video_id` is a UUID created when recording starts. It is also used as the API idempotency key and as part of the S3 object key:
+
+```text
+workers/{hashed_worker_id}/videos/{video_id}.mp4
+```
+
+This gives one stable S3 key for each video. Before issuing another URL, the backend checks whether that object already exists with the expected size. This handles the case where the PUT succeeded but the app closed before saving the `uploaded` state. The existing object is confirmed instead of uploading a duplicate.
+
+### Local Backend Setup
+
+The example backend is in `backend/`. It uses the AWS SDK to create scoped presigned URLs and confirm uploaded objects.
+
+```sh
+cd backend
+npm install
+# macOS/Linux: cp .env.example .env
+# Windows: Copy-Item .env.example .env
+npm start
+```
+
+Set valid AWS credentials in the shell or use an IAM role. Set `AWS_REGION` and `S3_BUCKET` in `backend/.env`.
+
+Copy the root `.env.example` to `.env` and set `EXPO_PUBLIC_UPLOAD_API_URL`. When testing on a physical phone, use the computer's LAN address, such as `http://192.168.1.10:3001`. The phone cannot reach the computer through `localhost`.
+
+The example backend accepts the mock `worker_id` from the request. A production backend must verify the login token and take `worker_id` from the verified server-side session, not trust a worker ID sent by the app.
+
