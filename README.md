@@ -128,3 +128,7 @@ Copy the root `.env.example` to `.env` and set `EXPO_PUBLIC_UPLOAD_API_URL`. Whe
 
 The example backend accepts the mock `worker_id` from the request. A production backend must verify the login token and take `worker_id` from the verified server-side session, not trust a worker ID sent by the app.
 
+## AWS Infrastructure
+
+The S3 architecture, IAM policy, cost estimate, lifecycle strategy, upload confirmation design, and Terraform instructions are documented in [INFRA.md](INFRA.md). The Terraform stack is in [`infra/terraform/`](infra/terraform/).
+
