@@ -11,6 +11,7 @@ import {
 } from "../db/videoRepository";
 import { getUploadNetworkType, isInternetAvailable } from "./networkService";
 import { isUploadApiConfigured, uploadVideo } from "./uploadApi";
+import type { UploadState } from "../types/recording";
 
 const INITIAL_RETRY_DELAY_MS = 2_000;
 const MAX_RETRY_DELAY_MS = 64_000;
@@ -19,6 +20,19 @@ const QUEUE_SCAN_LIMIT = 100;
 let processing = false;
 let started = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
+const stateListeners = new Set<(update: UploadStateUpdate) => void>();
+
+export type UploadStateUpdate = {
+  videoId: string;
+  uploadState: UploadState;
+  attemptCount: number;
+  lastError: string | null;
+  lastAttemptedAt: string | null;
+};
+
+function notifyStateChange(update: UploadStateUpdate): void {
+  stateListeners.forEach((listener) => listener(update));
+}
 
 function retryDelayMs(attemptCount: number): number {
   return Math.min(INITIAL_RETRY_DELAY_MS * 2 ** Math.max(attemptCount - 1, 0), MAX_RETRY_DELAY_MS);
@@ -48,7 +62,7 @@ function schedule(delayMs = 0): void {
 }
 
 async function processQueue(): Promise<void> {
-  if (processing || !started || AppState.currentState !== "active") {
+  if (processing || !started) {
     return;
   }
 
@@ -82,12 +96,34 @@ async function processQueue(): Promise<void> {
       return;
     }
 
+    notifyStateChange({
+      videoId: claimed.videoId,
+      uploadState: "uploading",
+      attemptCount: claimed.attemptCount,
+      lastError: null,
+      lastAttemptedAt: claimed.lastAttemptedAt,
+    });
+
     try {
       await uploadVideo(claimed);
       await markUploadSucceeded(claimed.videoId);
+      notifyStateChange({
+        videoId: claimed.videoId,
+        uploadState: "uploaded",
+        attemptCount: claimed.attemptCount,
+        lastError: null,
+        lastAttemptedAt: claimed.lastAttemptedAt,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown upload error";
-      await markUploadFailed(claimed.videoId, message);
+      const nextState = await markUploadFailed(claimed.videoId, message);
+      notifyStateChange({
+        videoId: claimed.videoId,
+        uploadState: nextState,
+        attemptCount: claimed.attemptCount,
+        lastError: message,
+        lastAttemptedAt: claimed.lastAttemptedAt,
+      });
       console.warn(`Upload failed for ${claimed.videoId}:`, message);
     }
 
@@ -104,9 +140,21 @@ export function requestUploadSync(): void {
   schedule();
 }
 
+export function subscribeToUploadState(listener: (update: UploadStateUpdate) => void): () => void {
+  stateListeners.add(listener);
+  return () => stateListeners.delete(listener);
+}
+
 export async function manuallyRetryUpload(videoId: string): Promise<boolean> {
   const queued = await retryFailedUpload(videoId);
   if (queued) {
+    notifyStateChange({
+      videoId,
+      uploadState: "pending",
+      attemptCount: 0,
+      lastError: null,
+      lastAttemptedAt: null,
+    });
     schedule();
   }
   return queued;

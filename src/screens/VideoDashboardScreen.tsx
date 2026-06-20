@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getVideosPage, type VideoListItem } from "../db/videoRepository";
 import { getAuthenticatedWorkerId } from "../services/authService";
-import { manuallyRetryUpload } from "../services/uploadSyncEngine";
+import { manuallyRetryUpload, requestUploadSync, subscribeToUploadState } from "../services/uploadSyncEngine";
 import { deleteLocalRecording } from "../services/videoService";
 import { styles, uploadStateStyles } from "../Styles/VideoDashboardScreen";
 import type { RootStackParamList } from "../types/navigation";
@@ -85,6 +85,25 @@ export default function VideoDashboardScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       void loadFirstPage();
+      requestUploadSync();
+
+      const unsubscribe = subscribeToUploadState((update) => {
+        setVideos((current) =>
+          current.map((item) =>
+            item.videoId === update.videoId
+              ? {
+                  ...item,
+                  uploadState: update.uploadState,
+                  attemptCount: update.attemptCount,
+                  lastError: update.lastError,
+                  lastAttemptedAt: update.lastAttemptedAt,
+                }
+              : item
+          )
+        );
+      });
+
+      return unsubscribe;
     }, [loadFirstPage])
   );
 
@@ -209,9 +228,9 @@ export default function VideoDashboardScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {item.lastError && item.uploadState === "failed" ? (
+        {item.lastError ? (
           <Text numberOfLines={2} style={styles.itemError}>
-            {item.lastError}
+            Attempt {item.attemptCount}: {item.lastError}
           </Text>
         ) : null}
 
