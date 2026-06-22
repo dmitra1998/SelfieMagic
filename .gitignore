@@ -39,6 +39,9 @@ yarn-error.*
 !.env.example
 .env*.local
 
+.idea/
+backend/.tmp-health/
+
 # typescript
 *.tsbuildinfo
 
