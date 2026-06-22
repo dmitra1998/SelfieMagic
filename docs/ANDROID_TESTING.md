@@ -1,5 +1,6 @@
 # Android APK Test Record
 
+<<<<<<< HEAD
 The standalone preview APK was installed and tested on an Android 10 or newer device. It worked as expected on a Google Pixel 7 Pro running Android 14. A newer development/debug APK has also been built and checked with Android SDK tools. Its device test is still pending.
 
 ## Build details
@@ -18,6 +19,23 @@ The standalone preview APK was installed and tested on an Android 10 or newer de
 | Device test | Passed on Pixel 7 Pro | Pending |
 
 ## Preview APK device test
+=======
+The APK has been built, installed, and tested on an Android 10 or newer device. The app installed successfully and worked as expected on a Google Pixel 7 Pro running Android 14.
+
+## Build details
+
+| Item | Result |
+| --- | --- |
+| Build profile | `preview` (`android.buildType: apk`) |
+| EAS build | [90773792-a6a8-4c34-9f5d-d0931838a2d8](https://expo.dev/accounts/dmitra2/projects/SelfieMagic/builds/90773792-a6a8-4c34-9f5d-d0931838a2d8), finished on 20 June 2026 |
+| Local APK | `artifacts/SelfieMagic-1.0.0-preview.apk` (102,698,848 bytes, ignored by Git) |
+| SHA-256 | `EBE6B9A3F4F508713A9163E94FADF299485D624D44021C0DBEB6156D5603CCD2` |
+| Package | `com.dmitra2.SelfieMagic` |
+| App version | `1.0.0` (`versionCode 2`) |
+| Android SDK | Minimum API 24, target and compile API 36 |
+
+## Device test status
+>>>>>>> origin/main
 
 | Test | Result |
 | --- | --- |
@@ -33,7 +51,11 @@ The standalone preview APK was installed and tested on an Android 10 or newer de
 
 ## Steps for the device test
 
+<<<<<<< HEAD
 1. Build the APK with `eas build --platform android --profile development` or `preview`.
+=======
+1. Build the APK with `eas build --platform android --profile preview`.
+>>>>>>> origin/main
 2. Get its hash with `Get-FileHash path/to/selfiemagic.apk -Algorithm SHA256`.
 3. Start an API 29 or newer emulator, or connect an Android 10 or newer phone.
 4. Run `adb shell getprop ro.product.model` to get the device model.
@@ -50,6 +72,10 @@ The standalone preview APK was installed and tested on an Android 10 or newer de
 
 On 20 June 2026, the APK package was checked with the Android SDK tools. `aapt dump badging` confirmed the package name, app version, minimum API 24, and target API 36.
 
+<<<<<<< HEAD
 The preview APK was later installed on a physical Google Pixel 7 Pro running Android 14 (API 34). Installation and launch passed, and the app worked as expected. This confirms that the standalone APK runs on an Android version newer than the required Android 10/API 29 minimum.
 
 The development/debug APK was built after the SecureStore and MP4 metadata changes. `aapt` confirmed its package details and `android:debuggable=true`. It has not yet been installed on the Pixel 7 Pro, so this file does not claim a runtime result for that newer binary.
+=======
+The APK was later installed on a physical Google Pixel 7 Pro running Android 14 (API 34). Installation and launch passed, and the app worked as expected. This confirms that the APK runs on an Android version newer than the required Android 10/API 29 minimum.
+>>>>>>> origin/main

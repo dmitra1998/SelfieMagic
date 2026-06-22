@@ -7,6 +7,8 @@ node_modules/
 .expo/
 .tmp/
 dist/
+backend/dist/
+artifacts/
 web-build/
 expo-env.d.ts
 
@@ -46,3 +48,10 @@ yarn-error.*
 
 # generated Android packages
 artifacts/*.apk
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log

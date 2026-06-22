@@ -6,6 +6,7 @@ const MAX_PAGE_SIZE = 100;
 export const MAX_UPLOAD_ATTEMPTS = 7;
 
 export type VideoListItem = Omit<RecordingMetadata, "metadata"> & {
+  localDeletedAt: string | null;
   metadataJson: string;
 };
 
@@ -22,6 +23,7 @@ type VideoRow = {
   os_version: string;
   resolution: string;
   local_path: string;
+  local_deleted_at: string | null;
   metadata_json: string;
   upload_state: UploadState;
   attempt_count: number;
@@ -43,6 +45,7 @@ function mapVideoRow(row: VideoRow): VideoListItem {
     osVersion: row.os_version,
     resolution: row.resolution,
     localPath: row.local_path,
+    localDeletedAt: row.local_deleted_at,
     metadataJson: row.metadata_json,
     uploadState: row.upload_state,
     attemptCount: row.attempt_count,
@@ -114,7 +117,7 @@ export async function getVideosPage(options: {
   const limit = Math.min(Math.max(options.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
   const columns = `
     video_id, worker_id, started_at, ended_at, duration_ms, file_size_bytes,
-    fps, fps_tier, device_model, os_version, resolution, local_path,
+    fps, fps_tier, device_model, os_version, resolution, local_path, local_deleted_at,
     metadata_json, upload_state, attempt_count, last_error, last_attempted_at
   `;
 
@@ -151,7 +154,7 @@ export async function getUploadQueue(limit = 10): Promise<VideoListItem[]> {
   const rows = await database.getAllAsync<VideoRow>(
     `SELECT
        video_id, worker_id, started_at, ended_at, duration_ms, file_size_bytes,
-       fps, fps_tier, device_model, os_version, resolution, local_path,
+       fps, fps_tier, device_model, os_version, resolution, local_path, local_deleted_at,
        metadata_json, upload_state, attempt_count, last_error, last_attempted_at
      FROM videos
      WHERE upload_state = 'pending'
@@ -187,7 +190,7 @@ export async function claimPendingUpload(videoId: string, networkType: UploadNet
     const row = await transaction.getFirstAsync<VideoRow>(
       `SELECT
          video_id, worker_id, started_at, ended_at, duration_ms, file_size_bytes,
-         fps, fps_tier, device_model, os_version, resolution, local_path,
+         fps, fps_tier, device_model, os_version, resolution, local_path, local_deleted_at,
          metadata_json, upload_state, attempt_count, last_error, last_attempted_at
        FROM videos
        WHERE video_id = ? AND upload_state = 'pending'`,
@@ -303,7 +306,24 @@ export async function retryFailedUpload(videoId: string): Promise<boolean> {
          last_error = NULL,
          last_attempted_at = NULL,
          updated_at = ?
-     WHERE video_id = ? AND upload_state = 'failed'`,
+     WHERE video_id = ? AND upload_state = 'failed' AND local_deleted_at IS NULL`,
+    now,
+    videoId
+  );
+
+  return result.changes === 1;
+}
+
+export async function markLocalFileDeleted(videoId: string): Promise<boolean> {
+  const database = await getDatabase();
+  const now = new Date().toISOString();
+  const result = await database.runAsync(
+    `UPDATE videos
+     SET local_deleted_at = ?, updated_at = ?
+     WHERE video_id = ?
+       AND local_deleted_at IS NULL
+       AND upload_state IN ('uploaded', 'failed')`,
+    now,
     now,
     videoId
   );

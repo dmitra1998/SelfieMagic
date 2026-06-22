@@ -1,5 +1,6 @@
 import { fetch, type FetchRequestInit } from "expo/fetch";
 import { File } from "expo-file-system";
+import * as LegacyFileSystem from "expo-file-system/legacy";
 import type { VideoListItem } from "../db/videoRepository";
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -107,23 +108,20 @@ async function confirmUpload(video: VideoListItem, objectKey: string, etag: stri
 }
 
 async function uploadFileToS3(uploadUrl: string, localPath: string, headers?: Record<string, string>): Promise<string | null> {
-  const file = new File(localPath);
-  const response = await fetchWithTimeout(
-    uploadUrl,
-    {
-      method: "PUT",
-      body: file,
-      headers: {
-        "Content-Type": "video/mp4",
-        ...headers,
-      },
+  const response = await LegacyFileSystem.uploadAsync(uploadUrl, localPath, {
+    httpMethod: "PUT",
+    uploadType: LegacyFileSystem.FileSystemUploadType.BINARY_CONTENT,
+    headers: {
+      "Content-Type": "video/mp4",
+      ...headers,
     },
-    UPLOAD_TIMEOUT_MS
-  );
+  });
 
-  await requireSuccessfulResponse(response, "S3 upload");
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(`S3 upload failed with HTTP ${response.status}${response.body ? `: ${response.body.slice(0, 300)}` : ""}`);
+  }
 
-  return response.headers.get("etag");
+  return response.headers.etag ?? response.headers.ETag ?? null;
 }
 
 export function isUploadApiConfigured(): boolean {
@@ -165,19 +163,6 @@ export async function uploadVideo(video: VideoListItem): Promise<void> {
     throw new Error("The backend did not return an upload URL.");
   }
 
-  const response = await fetchWithTimeout(
-    presigned.uploadUrl,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "video/mp4",
-        ...presigned.headers,
-      },
-      body: file,
-    },
-    UPLOAD_TIMEOUT_MS
-  );
-
-  await requireSuccessfulResponse(response, "S3 upload");
-  await confirmUpload(video, presigned.objectKey, response.headers.get("etag"));
+  const etag = await uploadFileToS3(presigned.uploadUrl, video.localPath, presigned.headers);
+  await confirmUpload(video, presigned.objectKey, etag);
 }

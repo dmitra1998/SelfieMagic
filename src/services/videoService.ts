@@ -1,5 +1,6 @@
 import { Directory, File, Paths } from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
+import { markLocalFileDeleted, type VideoListItem } from "../db/videoRepository";
 
 export type PersistedVideo = {
   localPath: string;
@@ -32,4 +33,24 @@ export async function saveRecordedVideo(sourceUri: string, videoId: string): Pro
     fileSizeBytes: localFile.size,
     galleryUri,
   };
+}
+
+export async function deleteLocalRecording(video: VideoListItem): Promise<void> {
+  if (video.uploadState !== "uploaded" && video.uploadState !== "failed") {
+    throw new Error("Wait for the upload to finish before deleting the local file.");
+  }
+
+  if (video.localDeletedAt) {
+    return;
+  }
+
+  const file = new File(video.localPath);
+  if (file.exists) {
+    file.delete();
+  }
+
+  const updated = await markLocalFileDeleted(video.videoId);
+  if (!updated) {
+    throw new Error("The local file could not be marked as deleted.");
+  }
 }

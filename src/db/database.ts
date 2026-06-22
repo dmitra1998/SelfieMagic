@@ -1,7 +1,7 @@
 import * as SQLite from "expo-sqlite";
 
 const DATABASE_NAME = "selfie-magic.db";
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
@@ -9,7 +9,7 @@ async function migrateDatabase(database: SQLite.SQLiteDatabase): Promise<void> {
   await database.execAsync("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
 
   const versionRow = await database.getFirstAsync<{ user_version: number }>("PRAGMA user_version");
-  const currentVersion = versionRow?.user_version ?? 0;
+  let currentVersion = versionRow?.user_version ?? 0;
 
   if (currentVersion > DATABASE_VERSION) {
     throw new Error(`Database version ${currentVersion} is newer than supported version ${DATABASE_VERSION}.`);
@@ -59,6 +59,16 @@ async function migrateDatabase(database: SQLite.SQLiteDatabase): Promise<void> {
           WHERE upload_state IN ('pending', 'failed');
 
         PRAGMA user_version = 1;
+      `);
+    });
+    currentVersion = 1;
+  }
+
+  if (currentVersion === 1) {
+    await database.withExclusiveTransactionAsync(async (transaction) => {
+      await transaction.execAsync(`
+        ALTER TABLE videos ADD COLUMN local_deleted_at TEXT;
+        PRAGMA user_version = 2;
       `);
     });
   }

@@ -1,0 +1,9 @@
+aws_region     = "eu-north-1"
+bucket_name    = "replace-with-a-globally-unique-bucket-name"
+environment    = "production"
+retention_days = 730
+
+tags = {
+  Owner      = "Engineering"
+  CostCenter = "VideoPipeline"
+}

@@ -17,6 +17,9 @@
     "preview": {
       "distribution": "internal",
       "environment": "preview",
+      "env": {
+        "ALLOW_CLEARTEXT_TRAFFIC": "true"
+      },
       "android": {
         "buildType": "apk"
       }
