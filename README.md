@@ -90,7 +90,7 @@ The backend has two routes:
 
 The sample backend accepts `workerId` from the app. A real production backend must read the worker ID from a verified login token instead.
 
-Keep the backend running while testing uploads. From the phone, open `http://YOUR_COMPUTER_IP:3001/health`. It should show `{"ok":true}`. If it does not, check that the phone and computer use the same Wi-Fi, the IP in `.env` is current, and Windows Firewall allows Node.js on the private network. Rebuild the APK after changing an `EXPO_PUBLIC_` value because Expo adds it to the app bundle at build time.
+Keep the backend running while testing uploads. Open `(https://selfiemagic.onrender.com/health)`. It should show `{"ok":true}`. If it does not, check that the phone and computer use the same Wi-Fi, the IP in `.env` is current, and Windows Firewall allows Node.js on the private network. Rebuild the APK after changing an `EXPO_PUBLIC_` value because Expo adds it to the app bundle at build time.
 
 ## Build the Android APK
 

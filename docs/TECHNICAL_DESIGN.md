@@ -91,19 +91,11 @@ The `videos` table stores:
 - Network type used for the upload
 - Upload and local deletion times
 
-<<<<<<< HEAD
 The schema rejects negative durations and file sizes. It also limits upload state to `pending`, `uploading`, `uploaded`, or `failed`. The local file path is unique. A foreign key connects each video to a worker. FPS and resolution are read from the finished MP4 track. The app stores a named fallback source if track parsing is not possible.
 
 The app turns on foreign keys and WAL mode. WAL mode makes it easier to read the dashboard while an upload update is being written.
 
 Database versions use `PRAGMA user_version`. Each migration runs in a transaction. If a migration fails, SQLite rolls it back. For a large database, new columns should first be nullable so the app does not need to rewrite every old row during startup. For example, a `gps_accuracy` migration over 50,000 rows would add the nullable column first, then copy JSON values in batches of 500. A migration progress row would let the work continue after an app restart. The README contains the full example and test plan.
-=======
-The schema rejects negative durations and file sizes. It also limits upload state to `pending`, `uploading`, `uploaded`, or `failed`. The local file path is unique. A foreign key connects each video to a worker.
-
-The app turns on foreign keys and WAL mode. WAL mode makes it easier to read the dashboard while an upload update is being written.
-
-Database versions use `PRAGMA user_version`. Each migration runs in a transaction. If a migration fails, SQLite rolls it back. For a large database, new columns should first be nullable so the app does not need to rewrite every old row during startup.
->>>>>>> origin/main
 
 The app uses two indexes:
 
@@ -152,7 +144,6 @@ Before creating a new upload URL, the backend checks whether the object already 
 
 A production version should not retry every error. Bad input and failed login checks should stop immediately. Network errors, rate limits, and server errors can be retried. A small random delay should also be added so thousands of phones do not retry at exactly the same time.
 
-<<<<<<< HEAD
 ## 6. Interrupted recording recovery
 
 The assignment does not require crash-safe recording recovery, and the current app does not try to recover a recording after the app or phone stops unexpectedly. A production version would use the following approach.
@@ -174,9 +165,6 @@ The final rename should happen only after the file is closed and checked. Renami
 Recovery should also check available storage before recording starts and listen for camera, app lifecycle, and low-storage errors. Tests should force-stop the app while recording, restart the phone, fill the storage, interrupt the camera, and crash at each database/file update step. Every test should check that the app either recovers one valid video or reports one failed recording without creating duplicates.
 
 ## 7. What happens at 10,000 users
-=======
-## 6. What happens at 10,000 users
->>>>>>> origin/main
 
 Assume 10,000 workers record 20 videos each day and every video is 50 MB. That is about 200,000 videos and 10 TB of new data per day.
 
