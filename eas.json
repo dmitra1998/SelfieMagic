@@ -9,7 +9,7 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_UPLOAD_API_URL": "https://selfiemagic.onrender.com",
-        "ALLOW_CLEARTEXT_TRAFFIC": "false"
+        "ALLOW_CLEARTEXT_TRAFFIC": "true"
       },
       "android": {
         "buildType": "apk"
