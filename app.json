@@ -16,6 +16,7 @@
       "supportsTablet": true
     },
     "android": {
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -58,7 +59,26 @@
           "locationWhenInUsePermission": "Allow SelfieMagic to show and attach your GPS coordinates when recording starts."
         }
       ],
+<<<<<<< Updated upstream
       "expo-sqlite"
+=======
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "androidGradlePluginVersion": "8.2.1"
+          }
+        }
+      ],
+      "expo-sqlite",
+      "expo-build-properties"
+>>>>>>> Stashed changes
     ],
     "extra": {
       "eas": {

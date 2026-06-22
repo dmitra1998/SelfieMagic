@@ -10,11 +10,17 @@ import {
   type VideoListItem,
 } from "../db/videoRepository";
 import { getUploadNetworkType, isInternetAvailable } from "./networkService";
+<<<<<<< Updated upstream
 import { isUploadApiConfigured, uploadVideo } from "./uploadApi";
+=======
+import { isUploadApiConfigured, isUploadApiReachable, uploadVideo } from "./uploadApi";
+import type { UploadState } from "../types/recording";
+>>>>>>> Stashed changes
 
 const INITIAL_RETRY_DELAY_MS = 2_000;
 const MAX_RETRY_DELAY_MS = 64_000;
 const QUEUE_SCAN_LIMIT = 100;
+const API_UNAVAILABLE_RETRY_MS = 10_000;
 
 let processing = false;
 let started = false;
@@ -62,6 +68,11 @@ async function processQueue(): Promise<void> {
 
     const queue = await getUploadQueue(QUEUE_SCAN_LIMIT);
     if (queue.length === 0) {
+      return;
+    }
+
+    if (!(await isUploadApiReachable())) {
+      schedule(API_UNAVAILABLE_RETRY_MS);
       return;
     }
 

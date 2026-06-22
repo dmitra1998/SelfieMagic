@@ -155,6 +155,11 @@ const server = createServer(async (request, response) => {
   }
 
   try {
+    if (request.method === "GET" && request.url === "/health") {
+      sendJson(response, 200, { ok: true });
+      return;
+    }
+
     if (request.method !== "POST") {
       sendJson(response, 404, { error: "Not found" });
       return;
