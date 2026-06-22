@@ -10,12 +10,8 @@ import {
   type VideoListItem,
 } from "../db/videoRepository";
 import { getUploadNetworkType, isInternetAvailable } from "./networkService";
-<<<<<<< Updated upstream
-import { isUploadApiConfigured, uploadVideo } from "./uploadApi";
-=======
 import { isUploadApiConfigured, isUploadApiReachable, uploadVideo } from "./uploadApi";
 import type { UploadState } from "../types/recording";
->>>>>>> Stashed changes
 
 const INITIAL_RETRY_DELAY_MS = 2_000;
 const MAX_RETRY_DELAY_MS = 64_000;

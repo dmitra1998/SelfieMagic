@@ -59,9 +59,6 @@
           "locationWhenInUsePermission": "Allow SelfieMagic to show and attach your GPS coordinates when recording starts."
         }
       ],
-<<<<<<< Updated upstream
-      "expo-sqlite"
-=======
       [
         "expo-secure-store",
         {
@@ -78,7 +75,6 @@
       ],
       "expo-sqlite",
       "expo-build-properties"
->>>>>>> Stashed changes
     ],
     "extra": {
       "eas": {

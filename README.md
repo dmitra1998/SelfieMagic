@@ -51,9 +51,6 @@ ORDER BY started_at DESC, video_id DESC
 LIMIT ?;
 ```
 
-<<<<<<< Updated upstream
-This query is supported by the following index:
-=======
 ## Environment variables
 
 The root [`.env.example`](.env.example) lists all environment variables used by the project.
@@ -201,7 +198,6 @@ Suppose an app update needs a new `gps_accuracy` column and the phone already ha
 An index on `gps_accuracy` should only be added if the app starts filtering or sorting by it. Otherwise, the index would take space and slow down writes without helping a query.
 
 The video list index is:
->>>>>>> Stashed changes
 
 ```sql
 CREATE INDEX idx_videos_worker_started
@@ -264,14 +260,6 @@ This gives one stable S3 key for each video. Before issuing another URL, the bac
 
 The example backend is in `backend/`. It uses the AWS SDK to create scoped presigned URLs and confirm uploaded objects.
 
-<<<<<<< Updated upstream
-```sh
-cd backend
-npm install
-# macOS/Linux: cp .env.example .env
-# Windows: Copy-Item .env.example .env
-npm start
-=======
 ## Retries and larger usage
 
 The app saves the attempt count, last error, and last attempt time in SQLite. It waits 2, 4, 8, 16, 32, and 64 seconds between retries. An interrupted upload goes back to `pending` the next time the app starts.
@@ -295,7 +283,6 @@ npm run typecheck
 npm --prefix backend run typecheck
 npm --prefix backend run build
 npx expo config --type public
->>>>>>> Stashed changes
 ```
 
 Set valid AWS credentials in the shell or use an IAM role. Set `AWS_REGION` and `S3_BUCKET` in `backend/.env`.
