@@ -16,7 +16,9 @@ The phone never receives AWS credentials. The backend creates a URL for one vide
 
 The Terraform files are in `infra/terraform/`.
 
-## S3 bucket design
+## AWS Infrastructure Design Questions and Answers
+
+## 1. S3 bucket design
 
 I would use one private bucket for each environment:
 
@@ -44,7 +46,7 @@ workers/32b110655156775fb63ba364813a6b86/videos/10d554b1-666c-428f-8481-85399e56
 
 Timestamps and searchable video details belong in a database. The app should not have to read or split S3 keys to search for videos.
 
-## IAM and security
+## 2. IAM and security
 
 The bucket should have these settings:
 
@@ -84,7 +86,7 @@ The backend in this repository is a sample, so it currently accepts `workerId` f
 
 The upload URL lasts for 15 minutes. A 50 MB video should normally finish in that time, even on a slower connection. If the upload fails or the URL expires, the app asks for a new one.
 
-## Storage cost
+## 3. Storage cost
 
 Using the assignment numbers:
 
@@ -116,7 +118,7 @@ The suggested lifecycle is:
 
 I would not use Intelligent-Tiering at first. The expected pattern is simple: videos are used soon after upload and become less useful over time. Fixed lifecycle rules avoid the extra per-object monitoring fee. Intelligent-Tiering may make sense later if real usage is less predictable.
 
-## Upload confirmation
+## 4. Upload confirmation
 
 The current backend uses `HeadObject` to check an upload:
 
