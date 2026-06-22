@@ -9,6 +9,7 @@ import { insertRecording } from "../db/videoRepository";
 import { getAuthenticatedWorkerId } from "../services/authService";
 import { requestUploadSync } from "../services/uploadSyncEngine";
 import { saveRecordedVideo } from "../services/videoService";
+import { readVideoTechnicalMetadata } from "../services/videoMetadataService";
 import type {
   FpsTier,
   GpsCoordinates,
@@ -283,7 +284,8 @@ export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
       }
 
       const persistedVideo = await saveRecordedVideo(video.uri, videoId);
-      const fps = CAMERA_CONFIG.FPS;
+      const technicalMetadata = await readVideoTechnicalMetadata(persistedVideo.localPath);
+      const fps = technicalMetadata.fps;
       const fpsTier = getFpsTier(fps);
       const deviceModel = [Device.manufacturer, Device.modelName].filter(Boolean).join(" ") || "Unknown device";
       const osVersion = Device.osVersion ?? "Unknown Android version";
@@ -299,7 +301,7 @@ export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
         fps_tier: fpsTier,
         device_model: deviceModel,
         os_version: osVersion,
-        resolution: CAMERA_CONFIG.RESOLUTION,
+        resolution: technicalMetadata.resolution,
         local_path: persistedVideo.localPath,
         gps_at_start: {
           lat: gpsAtStart.latitude,
@@ -311,7 +313,7 @@ export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
         battery_level_at_end: toBatteryPercentage(batteryEnd),
         network_type_at_upload: null,
         camera_facing_at_start: cameraFacingAtStart,
-        fps_source: "configured",
+        video_metadata_source: technicalMetadata.source,
         gallery_uri: persistedVideo.galleryUri,
       };
       const metadata: RecordingMetadata = {
@@ -325,7 +327,7 @@ export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
         fpsTier,
         deviceModel,
         osVersion,
-        resolution: CAMERA_CONFIG.RESOLUTION,
+        resolution: technicalMetadata.resolution,
         localPath: persistedVideo.localPath,
         metadata: metadataJson,
         uploadState: "pending",

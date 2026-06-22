@@ -5,6 +5,7 @@ node_modules/
 
 # Expo
 .expo/
+.tmp/
 dist/
 backend/dist/
 artifacts/
@@ -45,6 +46,8 @@ yarn-error.*
 /ios
 /android
 
+# generated Android packages
+artifacts/*.apk
 # Terraform
 **/.terraform/*
 *.tfstate

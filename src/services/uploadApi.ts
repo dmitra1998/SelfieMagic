@@ -4,6 +4,8 @@ import * as LegacyFileSystem from "expo-file-system/legacy";
 import type { VideoListItem } from "../db/videoRepository";
 
 const REQUEST_TIMEOUT_MS = 30_000;
+const HEALTH_TIMEOUT_MS = 5_000;
+const UPLOAD_TIMEOUT_MS = 5 * 60_000;
 
 type PresignedUploadResponse = {
   uploadUrl: string | null;
@@ -124,6 +126,19 @@ async function uploadFileToS3(uploadUrl: string, localPath: string, headers?: Re
 
 export function isUploadApiConfigured(): boolean {
   return Boolean(process.env.EXPO_PUBLIC_UPLOAD_API_URL);
+}
+
+export async function isUploadApiReachable(): Promise<boolean> {
+  if (!isUploadApiConfigured()) {
+    return false;
+  }
+
+  try {
+    const response = await fetchWithTimeout(`${getApiBaseUrl()}/health`, { method: "GET" }, HEALTH_TIMEOUT_MS);
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 export async function uploadVideo(video: VideoListItem): Promise<void> {

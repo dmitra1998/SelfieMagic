@@ -34,7 +34,7 @@ export type RecordingMetadataJson = {
   battery_level_at_end: number | null;
   network_type_at_upload: UploadNetworkType | null;
   camera_facing_at_start: "front" | "back";
-  fps_source: "configured";
+  video_metadata_source: "mp4_track" | "configured_fallback";
   gallery_uri: string | null;
 };
 
