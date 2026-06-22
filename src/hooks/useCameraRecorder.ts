@@ -4,7 +4,6 @@ import * as Battery from "expo-battery";
 import * as Crypto from "expo-crypto";
 import * as Device from "expo-device";
 import * as Location from "expo-location";
-import { CAMERA_CONFIG } from "../constants/camera";
 import { insertRecording } from "../db/videoRepository";
 import { getAuthenticatedWorkerId } from "../services/authService";
 import { requestUploadSync } from "../services/uploadSyncEngine";
@@ -21,6 +20,7 @@ import type {
 
 type UseCameraRecorderOptions = {
   isActive: boolean;
+  maxDurationSeconds: number;
 };
 
 function toGpsCoordinates(location: Location.LocationObject): GpsCoordinates {
@@ -56,7 +56,7 @@ export function formatBatteryPercentage(level: number | null): string {
   return `${Math.round(level * 100)}%`;
 }
 
-export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
+export function useCameraRecorder({ isActive, maxDurationSeconds }: UseCameraRecorderOptions) {
   const cameraRef = useRef<CameraView>(null);
   const readyGpsRef = useRef<GpsCoordinates | null>(null);
   const recordingStatusRef = useRef<RecordingStatus>("idle");
@@ -268,7 +268,7 @@ export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
       setRecordingStatus("recording");
 
       const video = await cameraRef.current.recordAsync({
-        maxDuration: CAMERA_CONFIG.MAX_DURATION,
+        maxDuration: maxDurationSeconds,
       });
 
       const endedAtMilliseconds = Date.now();
@@ -347,7 +347,7 @@ export function useCameraRecorder({ isActive }: UseCameraRecorderOptions) {
     } finally {
       setRecordingStatus("idle");
     }
-  }, [cameraType, canRecord]);
+  }, [cameraType, canRecord, maxDurationSeconds]);
 
   const stopRecording = useCallback(() => {
     if (cameraRef.current && recordingStatusRef.current === "recording") {

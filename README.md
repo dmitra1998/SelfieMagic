@@ -52,7 +52,7 @@ Do not use `localhost` on a phone. On the phone, `localhost` means the phone its
 
 `ALLOW_CLEARTEXT_TRAFFIC=true` allows local HTTP traffic in development and preview builds. Production builds should use HTTPS and keep this setting false.
 
-`EXPO_PUBLIC_MAX_RECORDING_DURATION_SECONDS` sets the recording limit. It defaults to 60 seconds and accepts values from 1 to 600.
+`EXPO_PUBLIC_MAX_RECORDING_DURATION_SECONDS` sets the default recording limit. It defaults to 60 seconds and accepts values from 1 to 600. The user can change the limit on the Home screen before opening the camera.
 
 Do not add AWS access keys to either `.env.example` file. The backend uses the normal AWS credential chain.
 
