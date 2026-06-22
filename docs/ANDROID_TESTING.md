@@ -7,7 +7,7 @@ The APK was installed and tested on an Android 10 or newer device. It worked as 
 1. Start the backend server by going to this link - https://selfiemagic.onrender.com/health. Wait for a few minutes till it shows "{"ok":true}". It indicates that the server is running.
 4. Download the APK from this Google Drive link - https://drive.google.com/file/d/18feEvx93yrkTZlyEJP7CuE3Rxod3mJNq/view?usp=drive_link.
 5. Install the APK on any android device.
-6. In the project root directory run - `npx expo start --dev-client`. Expo development server, Metro should be present.
+6. In the project root directory run - `npx expo start` to check the logs. PC and phone are on the same Wi-Fi.
 7. Open the app. Login with these credentials - 
    `Email - test@gmail.com`
    `Password - 123456`
