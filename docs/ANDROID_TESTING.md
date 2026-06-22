@@ -1,13 +1,13 @@
 # Android APK Test Record
 
-The standalone preview APK was installed and tested on an Android 10 or newer device. It worked as expected on a Google Pixel 7 Pro running Android 14. A newer development/debug APK has also been built and checked with Android SDK tools. Its device test is still pending.
+The APK was installed and tested on an Android 10 or newer device. It worked as expected on a Google Pixel 7 Pro running Android 14. A newer development/debug APK has also been built and checked with Android SDK tools.
 
 ## Steps for the device test
 
-1. Start the backend server by going to this link - https://selfiemagic.onrender.com/. Wait for a few minutes till it shows "{"error":"Not found"}".
-4. Download the APK from the provided Google Drive link.
+1. Start the backend server by going to this link - https://selfiemagic.onrender.com/health. Wait for a few minutes till it shows "{"ok":true}". It indicates that the server is running.
+4. Download the APK from this Google Drive link - https://drive.google.com/file/d/18feEvx93yrkTZlyEJP7CuE3Rxod3mJNq/view?usp=drive_link.
 5. Install the APK on any android device.
-6. In the project root directory run - `npx expo start --dev-client`. Expo development server, Metro.
+6. In the project root directory run - `npx expo start --dev-client`. Expo development server, Metro should be present.
 7. Open the app. Login with these credentials - 
    `Email - test@gmail.com`
    `Password - 123456`
