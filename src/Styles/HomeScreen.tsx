@@ -35,6 +35,56 @@ export const styles = StyleSheet.create({
     width: "100%",
     gap: 16, // Adds uniform space between buttons
   },
+  disabledButton: {
+    opacity: 0.45,
+  },
+  durationError: {
+    color: "#dc2626",
+  },
+  durationHint: {
+    color: "#6b7280",
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  durationInput: {
+    backgroundColor: "#ffffff",
+    borderColor: "#d1d5db",
+    borderRadius: 8,
+    borderWidth: 1,
+    color: "#111827",
+    fontSize: 18,
+    fontWeight: "700",
+    minWidth: 88,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    textAlign: "center",
+  },
+  durationInputInvalid: {
+    borderColor: "#dc2626",
+  },
+  durationInputRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+  },
+  durationLabel: {
+    color: "#374151",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  durationSection: {
+    alignSelf: "stretch",
+    backgroundColor: "#f3f4f6",
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: 24,
+    padding: 16,
+  },
+  durationUnit: {
+    color: "#4b5563",
+    fontSize: 15,
+    fontWeight: "600",
+  },
   dashboardButton: {
     alignItems: "center",
     backgroundColor: "#e0f2f1",

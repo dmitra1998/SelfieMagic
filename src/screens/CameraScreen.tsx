@@ -1,17 +1,23 @@
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CameraControls from "../components/camera/CameraControls";
 import CameraPreview from "../components/camera/CameraPreview";
 import TimerIndicator from "../components/camera/TimerIndicator";
+import { CAMERA_CONFIG } from "../constants/camera";
 import { formatBatteryPercentage, useCameraRecorder } from "../hooks/useCameraRecorder";
+import type { RootStackParamList } from "../types/navigation";
+
+type Props = NativeStackScreenProps<RootStackParamList, "Camera">;
 
 function formatGps(latitude: number, longitude: number) {
   return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
 }
 
-export default function CameraScreen() {
+export default function CameraScreen({ route }: Props) {
   const isFocused = useIsFocused();
+  const maxDurationSeconds = route.params?.maxDuration ?? CAMERA_CONFIG.MAX_DURATION;
   const {
     batteryLevel,
     batteryLevelAtEnd,
@@ -36,7 +42,7 @@ export default function CameraScreen() {
     startRecording,
     stopRecording,
     toggleCamera,
-  } = useCameraRecorder({ isActive: isFocused });
+  } = useCameraRecorder({ isActive: isFocused, maxDurationSeconds });
 
   const displayedGps = isRecording ? recordingStartGps ?? readyGps : readyGps;
   const gpsText = displayedGps ? formatGps(displayedGps.latitude, displayedGps.longitude) : "Waiting for GPS";
@@ -98,6 +104,10 @@ export default function CameraScreen() {
           <View style={styles.statusRow}>
             <Text style={styles.statusLabel}>Battery</Text>
             <Text style={styles.statusValue}>{batteryText}</Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Limit</Text>
+            <Text style={styles.statusValue}>{maxDurationSeconds} seconds</Text>
           </View>
           {lastRecordingMetadata ? <Text style={styles.savedText}>Last video saved</Text> : null}
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
