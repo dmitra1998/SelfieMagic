@@ -146,7 +146,7 @@ The app has `workers` and `videos` tables. Database changes use `PRAGMA user_ver
 
 Suppose an app update needs a new `gps_accuracy` column and the phone already has 50,000 video rows.
 
-1. Add the column as nullable, without a default value:
+1. We will add the column as nullable, without a default value:
 
    ```sql
    ALTER TABLE videos ADD COLUMN gps_accuracy REAL;
@@ -154,7 +154,7 @@ Suppose an app update needs a new `gps_accuracy` column and the phone already ha
 
    SQLite can add this column without rewriting every old row. New recordings can start filling it immediately.
 
-2. Add a small migration progress table. Save the migration name, the last processed `video_id`, and whether the work is complete.
+2. We will add a small migration progress table. Save the migration name, the last processed `video_id`, and whether the work is complete.
 
 3. Copy old values from `metadata_json` in batches of 500:
 
@@ -171,11 +171,11 @@ Suppose an app update needs a new `gps_accuracy` column and the phone already ha
    );
    ```
 
-4. Run each batch in a short transaction and save its progress in the same transaction. Pause between batches so recording and the upload queue stay responsive.
+4. We run each batch in a short transaction and save its progress in the same transaction. Pause between batches so recording and the upload queue stay responsive.
 
 5. If the app closes, continue from the saved `video_id` on the next start. A failed batch rolls back without losing the earlier completed batches.
 
-6. Test the migration with a new database, each older schema version, and a copy containing 50,000 rows. Check row counts, null handling, JSON values, restart recovery, and transaction rollback.
+6. We test the migration with a new database, each older schema version, and a copy containing 50,000 rows. Check row counts, null handling, JSON values, restart recovery, and transaction rollback.
 
 An index on `gps_accuracy` should only be added if the app starts filtering or sorting by it. Otherwise, the index would take space and slow down writes without helping a query.
 
